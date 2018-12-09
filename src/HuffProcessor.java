@@ -60,15 +60,15 @@ public class HuffProcessor {
 		while (true) {
 			int value = in.readBits(BITS_PER_WORD);
 			if (value == -1) {
-				String code = encoding[PSEUDO_EOF];
-				out.writeBits(code.length(), Integer.parseInt(code, 2));
 				break;
 			}
-				
+
 			String code = encoding[value];
 			out.writeBits(code.length(), Integer.parseInt(code, 2));
 		}
-		
+		String code = encoding[PSEUDO_EOF];
+		out.writeBits(code.length(), Integer.parseInt(code, 2));
+
 	}
 
 	private void writeHeader(HuffNode root, BitOutputStream out) {
@@ -77,10 +77,11 @@ public class HuffProcessor {
 		if (root.myLeft == null && root.myRight == null) {
 			out.writeBits(1, 1);
 			out.writeBits(BITS_PER_WORD + 1, root.myValue);
+		} else {
+			out.writeBits(1, 0);
+			writeHeader(root.myLeft, out);
+			writeHeader(root.myRight, out);
 		}
-		out.writeBits(1, 0);
-		writeHeader(root.myLeft, out);
-		writeHeader(root.myRight, out);
 	}
 
 	private String[] makeCodingsFromTree(HuffNode root) {
@@ -90,18 +91,16 @@ public class HuffProcessor {
 	}
 
 	private void codingHelper(HuffNode root, String path, String[] encodings) {
-		
+
+		if (root == null) return;
 		if (root.myLeft == null && root.myRight == null) {
 			encodings[root.myValue] = path;
 			return;
-		}
-		if(root.myLeft != null){
+		} else {
 			codingHelper(root.myLeft, path + "0", encodings);	
-		}
-		if(root.myRight != null){
 			codingHelper(root.myRight, path + "1", encodings);	
 		}
-		
+
 	}
 
 	private HuffNode makeTreeFromCounts(int[] freq) {
@@ -112,6 +111,7 @@ public class HuffProcessor {
 				pq.add(new HuffNode(index, freq[index], null, null));
 			}
 		}
+		pq.add(new HuffNode(PSEUDO_EOF, 1, null, null));
 
 		while (pq.size() > 1) {
 			HuffNode left = pq.remove();
@@ -125,14 +125,15 @@ public class HuffProcessor {
 
 	private int[] readForCounts(BitInputStream in) {
 		int[] freq = new int[ALPH_SIZE + 1];
-		freq[PSEUDO_EOF] = 1;
+
 		while (true) {
 			int value = in.readBits(BITS_PER_WORD);
 			if (value == -1)
 				break;
 			freq[value]++;
 		}
-		
+		freq[PSEUDO_EOF] = 1;
+
 		return freq;
 	}
 
