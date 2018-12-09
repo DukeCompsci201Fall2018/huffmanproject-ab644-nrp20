@@ -59,14 +59,16 @@ public class HuffProcessor {
 
 		while (true) {
 			int value = in.readBits(BITS_PER_WORD);
-			if (value == -1)
+			if (value == -1) {
+				String code = encoding[PSEUDO_EOF];
+				out.writeBits(code.length(), Integer.parseInt(code, 2));
 				break;
+			}
+				
 			String code = encoding[value];
 			out.writeBits(code.length(), Integer.parseInt(code, 2));
 		}
-		String code = encoding[PSEUDO_EOF];
-		out.writeBits(code.length(), Integer.parseInt(code, 2));
-
+		
 	}
 
 	private void writeHeader(HuffNode root, BitOutputStream out) {
@@ -84,20 +86,22 @@ public class HuffProcessor {
 	private String[] makeCodingsFromTree(HuffNode root) {
 		String[] encodings = new String[ALPH_SIZE + 1];
 		codingHelper(root, "", encodings);
-
-		return null;
+		return encodings;
 	}
 
 	private void codingHelper(HuffNode root, String path, String[] encodings) {
-		if (root == null)
-			return;
+		
 		if (root.myLeft == null && root.myRight == null) {
 			encodings[root.myValue] = path;
 			return;
-		} else {
-			codingHelper(root.myLeft, path + "0", encodings);
-			codingHelper(root.myRight, path + "1", encodings);
 		}
+		if(root.myLeft != null){
+			codingHelper(root.myLeft, path + "0", encodings);	
+		}
+		if(root.myRight != null){
+			codingHelper(root.myRight, path + "1", encodings);	
+		}
+		
 	}
 
 	private HuffNode makeTreeFromCounts(int[] freq) {
@@ -112,7 +116,7 @@ public class HuffProcessor {
 		while (pq.size() > 1) {
 			HuffNode left = pq.remove();
 			HuffNode right = pq.remove();
-			HuffNode t = new HuffNode(0, left.myWeight + right.myWeight);
+			HuffNode t = new HuffNode(0, left.myWeight + right.myWeight, left, right);
 			pq.add(t);
 		}
 		HuffNode root = pq.remove();
@@ -121,16 +125,14 @@ public class HuffProcessor {
 
 	private int[] readForCounts(BitInputStream in) {
 		int[] freq = new int[ALPH_SIZE + 1];
-
+		freq[PSEUDO_EOF] = 1;
 		while (true) {
 			int value = in.readBits(BITS_PER_WORD);
 			if (value == -1)
 				break;
-			if (value == PSEUDO_EOF)
-				break;
 			freq[value]++;
 		}
-		freq[PSEUDO_EOF] = 1;
+		
 		return freq;
 	}
 
